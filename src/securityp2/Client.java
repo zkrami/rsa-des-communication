@@ -36,7 +36,8 @@ public class Client {
             writer.write(message);
             writer.close();
         } catch (Exception ex) {
-            throw new Exception("Couldn't send the message");
+            System.err.println("Couldn't send the message");
+            throw ex;
         }
     }
 
@@ -54,7 +55,8 @@ public class Client {
             String message = builder.toString();
             return message;
         } catch (Exception ex) {
-            throw new Exception("Couldn't recieve the message ");
+            System.err.print("Couldn't recieve the message ");
+            throw ex; 
         }
     }
 
@@ -65,7 +67,8 @@ public class Client {
             System.out.println("Recieved public key");
             System.out.println(this.publicKey);
         } catch (Exception ex) {
-            throw new Exception("Couldn't initiate the session ");
+            System.err.println("Couldn't initiate the session");
+            throw ex; 
         }
 
     }
@@ -74,8 +77,7 @@ public class Client {
 
         try {
             Client client = new Client("127.0.0.1");
-            System.out.println("Connected to server");
-            System.out.println("Sending message to server");
+            System.out.println("Connected to server");            
             client.initSession();
 
         } catch (Exception ex) {

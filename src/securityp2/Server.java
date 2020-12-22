@@ -34,14 +34,15 @@ public class Server {
     /*
     *    Send message to the client 
      */
-    public void send(String message) {
+    public void send(String message) throws Exception {
         try {
             OutputStream out = this.client.getOutputStream();
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
             writer.write(message);
             writer.close();
         } catch (Exception ex) {
-
+            System.err.println("Couldn't send the message");
+            throw ex;
         }
     }
 
@@ -59,7 +60,8 @@ public class Server {
             String message = builder.toString();
             return message;
         } catch (Exception ex) {
-            throw new Exception("Couldn't recieve the message ");
+            System.err.print("Couldn't recieve the message ");
+            throw ex; 
         }
     }
 
@@ -74,11 +76,14 @@ public class Server {
             String message = this.recieve();
             System.out.println("Message received");
             System.out.println(message);
-            this.publicKey = String.join("", Files.readAllLines(Paths.get("./public.pem")));
+        
+            this.publicKey = String.join("", Files.readAllLines(Paths.get("public.pem")));
+            System.out.println(this.publicKey);
             this.send(this.publicKey);
 
         } catch (Exception ex) {
-            throw new Exception("Couldn't initiate the session");
+            System.err.println("Couldn't initiate the session");
+            throw ex;             
         }
 
     }
@@ -88,7 +93,7 @@ public class Server {
      */
     public void initKeys() throws Exception {
         // Generate private/public key 
-
+        if(this.hasKeys()) return ; 
         try {
             System.out.println("Generating server RSA keys");
             Utilities.command("openssl genrsa -out key.pem 2048");
@@ -97,24 +102,30 @@ public class Server {
             Utilities.command("openssl rsa -in key.pem -outform PEM -pubout -out public.pem");
 
         } catch (Exception ex) {
-            throw new Exception("Couldn't generte keys");
+            System.err.print("Couldn't generte keys");
+            throw ex; 
         }
 
     }
 
     public boolean hasKeys() {
-        File f = new File("./key.pem");
+        File f = new File("key.pem");
         return f.exists();
     }
 
     public static void main(String[] args) {
         // TODO code application logic here
-        System.out.println("dasd");
+            System.out.println(Paths.get("public.pem").toAbsolutePath());
+            System.out.println("USER:DIR!:" + System.getProperty("user.dir"));
+
         try {
             Server s = new Server();
-
+            
+            //s.initKeys();
+            
             s.open();
-            System.out.println("From server:" + s.recieve());
+            s.initSession();
+            
 
         } catch (Exception ex) {
             System.out.println(ex);
