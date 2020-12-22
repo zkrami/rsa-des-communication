@@ -15,8 +15,24 @@ import java.io.InputStreamReader;
  */
 public class Utilities {
 
+    public enum Protocol {
+
+        InitSession(0),
+        Message(1),
+        InvalidSession(2),
+        ACK(3);
+        private final int value;
+        private Protocol(int value){
+            this.value = value ; 
+        }
+
+        public int getValue() {
+            return value;
+        }
+    };
+
     static String command(String cmd) throws IOException, InterruptedException {
-        
+
         Runtime run = Runtime.getRuntime();
         Process pr = run.exec(cmd);
         pr.waitFor();
@@ -26,6 +42,6 @@ public class Utilities {
         while ((line = buf.readLine()) != null) {
             output += line;
         }
-        return output ; 
+        return output;
     }
 }
