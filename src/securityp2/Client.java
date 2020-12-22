@@ -32,6 +32,7 @@ public class Client {
     public void send(String message) throws Exception {
         try {
             OutputStream out = this.socket.getOutputStream();
+            
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
             writer.write(message);
             writer.close();
@@ -63,6 +64,7 @@ public class Client {
     public void initSession() throws Exception {
         try {
             this.send("Hello");
+            System.out.println("Is closed " + this.socket.isClosed());
             this.publicKey = this.recieve();
             System.out.println("Recieved public key");
             System.out.println(this.publicKey);

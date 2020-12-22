@@ -39,7 +39,7 @@ public class Server {
             OutputStream out = this.client.getOutputStream();
             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
             writer.write(message);
-            writer.close();
+            
         } catch (Exception ex) {
             System.err.println("Couldn't send the message");
             throw ex;
@@ -115,9 +115,7 @@ public class Server {
 
     public static void main(String[] args) {
         // TODO code application logic here
-            System.out.println(Paths.get("public.pem").toAbsolutePath());
-            System.out.println("USER:DIR!:" + System.getProperty("user.dir"));
-
+            
         try {
             Server s = new Server();
             
@@ -125,7 +123,8 @@ public class Server {
             
             s.open();
             s.initSession();
-            
+            Thread.sleep(10000);
+            System.out.println("Finished");
 
         } catch (Exception ex) {
             System.out.println(ex);
