@@ -23,6 +23,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Random;
+import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.crypto.Cipher;
 import securityp2.Utilities.Protocol;
 
@@ -179,31 +182,51 @@ public class Client {
     public void close() throws IOException {
         this.socket.close();
     }
-   
+    Thread reciveThreadRef;
+
+    public void startRecieving() {
+
+        reciveThreadRef = new Thread(() -> {
+            try {
+                while (true) {
+                    String message = Client.this.recieveEncryptedMessage();
+                    System.out.println("Message recieved from server:");
+                    System.out.println(message);
+                }
+            } catch (Exception ex) {
+                System.err.print(ex);
+            }
+        });
+        this.reciveThreadRef.start();
+    }
+
+    void sendProtocolMessage(String message) throws Exception {
+        this.sendProtocolCode(Protocol.Message);
+        this.sendEncryptedMessage(message);
+    }
 
     public static void main(String args[]) {
 
         try {
+
             Client client = new Client("127.0.0.1");
             System.out.println("Connected to server");
             client.initSession();
-
+            client.startRecieving();
             // sending message and recieving reply 
-            System.out.println("Sending message and recieving reply from the server");
-            client.sendProtocolCode(Protocol.Message);
-            client.sendEncryptedMessage("Message 1");
-            String message = client.recieveEncryptedMessage();
-            System.out.println("Message recieved from server");
-            System.out.println(message);
-           
 
-            client.sendProtocolCode(Protocol.Message);
-            client.sendEncryptedMessage("Oh you are so cool");
-            message = client.recieveEncryptedMessage();
-            System.out.println("Message recieved from server");
-            System.out.println(message);
+            Scanner scan = new Scanner(System.in);
 
-             client.invalidSession();
+            while (true) {
+                System.out.println("Write a message to the server (type exit to quit):");
+                String s = scan.nextLine();
+                if (s.equals("exit")) {
+                    break;
+                }
+                client.sendProtocolMessage(s);
+            }
+
+            client.invalidSession();
             client.close();
 
         } catch (Exception ex) {

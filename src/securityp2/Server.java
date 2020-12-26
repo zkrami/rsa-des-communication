@@ -30,7 +30,7 @@ public class Server {
     Socket client;
     String publicKey;
     byte[] sessionKey;
-
+    
     public Key factorPublicKey() throws Exception {
         this.publicKey = this.publicKey.replace("-----BEGIN PUBLIC KEY-----", "");
         this.publicKey = this.publicKey.replace("-----END PUBLIC KEY-----", "");
