@@ -47,10 +47,13 @@ public class Client {
         new Random().nextBytes(this.sessionKey);
 
     }
+    
+    int id; // random id for to distinguish clients 
 
     public Client(String host) throws IOException {
 
         this.socket = new Socket(host, 2000);
+        id = new Random().nextInt(100);
     }
 
     /**
@@ -223,7 +226,7 @@ public class Client {
                 if (s.equals("exit")) {
                     break;
                 }
-                client.sendProtocolMessage(s);
+                client.sendProtocolMessage(s + " -- client(" + client.id + ")");
             }
 
             client.invalidSession();
