@@ -230,7 +230,7 @@ public class Server {
 
     public Server() throws IOException {
         socket = new ServerSocket(2000);
-        this.publicKey = String.join("", Files.readAllLines(Paths.get("public.pem")));
+
     }
 
     public static void printArray(byte[] arr) {
@@ -242,12 +242,17 @@ public class Server {
         System.out.println(" ");
     }
 
+    public void loadPublicKey() throws IOException {
+        this.publicKey = String.join("", Files.readAllLines(Paths.get("public.pem")));
+    }
+
     /**
      * Generate server public and private keys using RSA.
      */
     public void initKeys() throws Exception {
         // Generate private/public key 
         if (this.hasKeys()) {
+            this.loadPublicKey();
             return;
         }
         try {
@@ -256,8 +261,9 @@ public class Server {
             System.out.println("Keys generated succefully");
             System.out.println("Extracting the public key");
             Utilities.command("openssl rsa -in key.pem -outform PEM -pubout -out public.pem");
-
             Utilities.command("openssl pkcs8 -topk8 -inform PEM -outform DER -in key.pem -out private.der -nocrypt");
+            
+            this.loadPublicKey();
 
         } catch (Exception ex) {
             System.err.print("Couldn't generte keys");
