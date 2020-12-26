@@ -22,6 +22,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Random;
 import javax.crypto.Cipher;
 import securityp2.Utilities.Protocol;
 
@@ -33,7 +34,16 @@ public class Client {
 
     Socket socket;
     String publicKey;
-    String sessionKey = "n wqeasd asd asd ";
+
+    // 21 bytes session key 
+    byte[] sessionKey;
+
+    void generateSessionKey() {
+        // generate random 21 bytes session key 
+        this.sessionKey = new byte[21];
+        new Random().nextBytes(this.sessionKey);
+
+    }
 
     public Client(String host) throws IOException {
 
@@ -87,63 +97,28 @@ public class Client {
         return kf.generatePublic(spec);
     }
 
-    public byte[] encryptRSA(String str) throws Exception {
+    public byte[] encryptRSA(byte[] str) throws Exception {
         Cipher rsa = Cipher.getInstance("RSA");
         rsa.init(Cipher.ENCRYPT_MODE, this.factorPublicKey());
-        return rsa.doFinal(str.getBytes());
+        return rsa.doFinal(str);
     }
 
-    /**
-     * Encrypt 4 bytes
-     */
-    public byte[] encryptDes(byte[] bytes) {
-        return bytes;
-    }
-
-    /*
-    * Decrypt 4 bytes 
-     */
-    public byte[] decryptDes(byte[] bytes) {
-        return bytes;
-    }
+    DESCipher cipher;
 
     public byte[] decrypt(byte[] bytes) {
-
-        byte[] result = new byte[bytes.length];
-
-        for (int i = 0; i < bytes.length; i += 4) {
-            byte[] block = Arrays.copyOfRange(bytes, i, i + 4);
-            block = decryptDes(block);
-            for (int j = 0; j < 4; j++) {
-                result[i + j] = block[j];
-            }
-        }
-        return result;
-
+        return cipher.decrypt(bytes);
     }
 
     public byte[] encrypt(byte[] bytes) {
-
-        byte[] result = new byte[bytes.length + bytes.length % 4];
-        // encrypt each block 
-        for (int i = 0; i < bytes.length; i += 4) {
-            byte[] block = Arrays.copyOfRange(bytes, i, i + 4); // if copy range is out of the original range the method appends the copied arrays with 0 
-            block = encryptDes(block);
-            for (int j = 0; j < 4; j++) {
-                result[i + j] = block[j];
-            }
-
-        }
-        return result;
-
+        return cipher.encrypt(bytes);
     }
-    
+
     public void sendEncryptedMessage(String str) throws Exception {
         if (this.sessionKey == null) {
             throw new Exception("Session is not valid");
         }
 
-        this.send(this.encryptDes(str.getBytes()));
+        this.send(this.encrypt(str.getBytes()));
     }
 
     public String recieveEncryptedMessage() throws Exception {
@@ -151,7 +126,7 @@ public class Client {
             throw new Exception("Session is not valid");
         }
 
-        return new String(this.decryptDes(this.recieve()));
+        return new String(this.decrypt(this.recieve()));
     }
 
     public void sendProtocolCode(Protocol code) throws Exception {
@@ -160,7 +135,7 @@ public class Client {
         writer.flush();
     }
 
-      public Protocol recieveProtocolCode() throws Exception {
+    public Protocol recieveProtocolCode() throws Exception {
         ObjectInputStream reader = new ObjectInputStream(this.socket.getInputStream());
         int code = reader.readInt();
         if (code == Utilities.Protocol.InitSession.getValue()) {
@@ -172,18 +147,20 @@ public class Client {
         if (code == Utilities.Protocol.ACK.getValue()) {
             return Utilities.Protocol.ACK;
         }
-        
+
         return Utilities.Protocol.InvalidSession;
     }
-
 
     public void initSession() throws Exception {
         try {
             this.sendProtocolCode(Protocol.InitSession);
             this.publicKey = this.recieveMessage();
+            this.generateSessionKey();
+            this.cipher = new DESCipher(this.sessionKey);
             this.send(this.encryptRSA(this.sessionKey));
-            if(this.recieveProtocolCode() != Protocol.ACK){
-                throw new Exception("Server didn't send Acknowledgement message"); 
+
+            if (this.recieveProtocolCode() != Protocol.ACK) {
+                throw new Exception("Server didn't send Acknowledgement message");
             }
 
         } catch (Exception ex) {
@@ -192,10 +169,17 @@ public class Client {
         }
 
     }
-    public  void invalidSession() throws Exception{
-        this.sessionKey = null; 
+
+    public void invalidSession() throws Exception {
+        this.sessionKey = null;
+        this.cipher = null;
         this.sendProtocolCode(Protocol.InvalidSession);
     }
+
+    public void close() throws IOException {
+        this.socket.close();
+    }
+   
 
     public static void main(String args[]) {
 
@@ -203,20 +187,27 @@ public class Client {
             Client client = new Client("127.0.0.1");
             System.out.println("Connected to server");
             client.initSession();
-            
-            
+
             // sending message and recieving reply 
             System.out.println("Sending message and recieving reply from the server");
             client.sendProtocolCode(Protocol.Message);
             client.sendEncryptedMessage("Message 1");
             String message = client.recieveEncryptedMessage();
             System.out.println("Message recieved from server");
-            System.out.println(message); 
-            
-            client.invalidSession();
-            
+            System.out.println(message);
+           
+
+            client.sendProtocolCode(Protocol.Message);
+            client.sendEncryptedMessage("Oh you are so cool");
+            message = client.recieveEncryptedMessage();
+            System.out.println("Message recieved from server");
+            System.out.println(message);
+
+             client.invalidSession();
+            client.close();
 
         } catch (Exception ex) {
+
             System.err.print(ex);
         }
     }

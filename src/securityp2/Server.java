@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import javax.crypto.Cipher;
 import securityp2.Utilities.Protocol;
+import sun.net.ConnectionResetException;
 
 /**
  *
@@ -28,7 +29,7 @@ public class Server {
     ServerSocket socket;
     Socket client;
     String publicKey;
-    String sessionKey;
+    byte[] sessionKey;
 
     public Key factorPublicKey() throws Exception {
         this.publicKey = this.publicKey.replace("-----BEGIN PUBLIC KEY-----", "");
@@ -50,11 +51,10 @@ public class Server {
         return kf.generatePrivate(spec);
     }
 
-    public String decryptRSA(byte[] bytes) throws Exception {
+    public byte[] decryptRSA(byte[] bytes) throws Exception {
         Cipher rsa = Cipher.getInstance("RSA");
         rsa.init(Cipher.DECRYPT_MODE, this.factorPrivateKey());
-        byte[] utf8 = rsa.doFinal(bytes);
-        return new String(utf8);
+        return rsa.doFinal(bytes);
     }
 
     public Server() throws IOException {
@@ -95,52 +95,19 @@ public class Server {
         writer.flush();
     }
 
-    /**
-     * Encrypt 4 bytes
-     */
-    public byte[] encryptDes(byte[] bytes) {
-        return bytes;
-    }
-
-    /*
-    * Decrypt 4 bytes 
-     */
-    public byte[] decryptDes(byte[] bytes) {
-        return bytes;
-    }
+    DESCipher cipher;
 
     public byte[] decrypt(byte[] bytes) {
-
-        byte[] result = new byte[bytes.length];
-
-        for (int i = 0; i < bytes.length; i += 4) {
-            byte[] block = Arrays.copyOfRange(bytes, i, i + 4);
-            block = decryptDes(block);
-            for (int j = 0; j < 4; j++) {
-                result[i + j] = block[j];
-            }
-        }
-        return result;
-
+        return cipher.decrypt(bytes);
     }
 
     public byte[] encrypt(byte[] bytes) {
-
-        byte[] result = new byte[bytes.length + bytes.length % 4];
-        // encrypt each block 
-        for (int i = 0; i < bytes.length; i += 4) {
-            byte[] block = Arrays.copyOfRange(bytes, i, i + 4); // if copy range is out of the original range the method appends the copied arrays with 0 
-            block = encryptDes(block);
-            for (int j = 0; j < 4; j++) {
-                result[i + j] = block[j];
-            }
-
-        }
-        return result;
+        return cipher.encrypt(bytes);
     }
 
     public void invalidSession() {
         this.sessionKey = null;
+        this.cipher = null;
     }
 
     public void sendEncryptedMessage(String str) throws Exception {
@@ -148,7 +115,7 @@ public class Server {
             throw new Exception("Session is not valid");
         }
 
-        this.send(this.encryptDes(str.getBytes()));
+        this.send(this.encrypt(str.getBytes()));
     }
 
     public String recieveEncryptedMessage() throws Exception {
@@ -156,7 +123,7 @@ public class Server {
             throw new Exception("Session is not valid");
         }
 
-        return new String(this.decryptDes(this.recieve()));
+        return new String(this.decrypt(this.recieve()));
     }
 
     public void sendMessage(String message) throws Exception {
@@ -166,6 +133,15 @@ public class Server {
             System.err.println("Couldn't send the message");
             throw ex;
         }
+    }
+
+    public static void printArray(byte[] arr) {
+        System.out.println(" ");
+        for (int i = 0; i < arr.length; i++) {
+            System.out.print(arr[i]);
+            System.out.print(" ");
+        }
+        System.out.println(" ");
     }
 
     /**
@@ -180,6 +156,8 @@ public class Server {
 
             byte[] encryptedSesssionKey = this.recieve();
             this.sessionKey = this.decryptRSA(encryptedSesssionKey);
+            this.printArray(sessionKey);
+            this.cipher = new DESCipher(this.sessionKey);
             // send acknowledgement message 
             this.sendProtocolCode(Protocol.ACK);
 
@@ -237,7 +215,7 @@ public class Server {
         if (code == Utilities.Protocol.ACK.getValue()) {
             return Utilities.Protocol.ACK;
         }
-        
+
         return Utilities.Protocol.InvalidSession;
     }
 
@@ -266,7 +244,7 @@ public class Server {
                         System.out.println("Invalidating session");
                         s.invalidSession();
                         break;
-                    } 
+                    }
                     case Message: {
                         System.out.println("Recieving message from the client:");
                         String message = s.recieveEncryptedMessage();
@@ -278,11 +256,15 @@ public class Server {
                 }
 
             }
-            
 
         } catch (Exception ex) {
-            System.out.println(ex);
-            System.out.print("couldn't connect");
+            if (ex instanceof EOFException) {
+                System.out.print("Client closed connection \n");
+            } else {
+                System.out.println(ex);
+                System.out.print("couldn't connect");
+            }
+
         }
     }
 
